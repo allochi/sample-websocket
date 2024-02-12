@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket</title>
+  </head>
+  <body>
+    <h1>WebSocket</h1>
+
+    <input type="text" name="message" id="message" />
+    <button type="button" onclick="send()">Send</button>
+  </body>
+  <script lang="js">
+         const socket = new WebSocket("ws://localhost:8080");
+
+         socket.addEventListener("open", function (event) {
+           socket.send("Hello Server!");
+         });
+
+         socket.addEventListener("message", function (event) {
+        //    console.log("Response: ", event.data);
+           console.log(event.data);
+         });
+
+      function send() {
+    event.preventDefault();
+      	// console.log("send - wait 2 seconds");
+        const message = document.getElementById("message").value;
+        socket.send(message);
+      }
+  </script>
+</html>
