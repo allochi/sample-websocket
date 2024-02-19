@@ -1,4 +1,4 @@
-module github.com/allochi/istabraq
+module github.com/allochi/websocket-sample
 
 go 1.21.0
 

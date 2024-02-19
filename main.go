@@ -12,8 +12,8 @@ import (
 // address => ws_connection -> last_active = we can clean up inactive connections after some time
 
 // TODO
-// 1. maybe we can add the address to the user of notification
-// 2. maybe we add a table of notifications that we can sen to the client when they connect
+// 1. maybe we can add the user address as a path param on notifications endpoint
+// 2. maybe we add a table of notifications that we can sen to the client besides websockets
 
 type WSConn struct {
 	*websocket.Conn
