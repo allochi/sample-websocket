@@ -3,31 +3,99 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebSocket</title>
-  </head>
-  <body>
-    <h1>WebSocket</h1>
+    <title>WebSocket timer</title>
+    <style>
+      body {
+        background-color: black;
+      }
 
-    <input type="text" name="message" id="message" />
-    <button type="button" onclick="send()">Send</button>
+      .log {
+        color: aliceblue;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 9px 0px;
+        border-bottom: 1px solid #333;
+      }
+
+      button {
+        padding: 3px 24px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <input type="text" id="address" hint="address" />
+      <button onclick="sendTransaction()">Send Transaction</button>
+    </div>
+    <div class="log">websocket timer</div>
   </body>
   <script lang="js">
-         const socket = new WebSocket("ws://localhost:8080");
+    function main() {
+      const body = document.querySelector("body");
+      // setTimer();
+    }
 
-         socket.addEventListener("open", function (event) {
-           socket.send("Hello Server!");
-         });
+    // set client-side timer
+    function setTimer() {
+      setInterval(() => {
+        let time = new Date().toLocaleTimeString();
+        log(time);
+      }, 1000);
+    }
 
-         socket.addEventListener("message", function (event) {
-        //    console.log("Response: ", event.data);
-           console.log(event.data);
-         });
+    // inject log into the body
+    function log(message) {
+      const body = document.querySelector("body");
+      var div = document.createElement('div');
+      div.className = 'log';
+      div.textContent = message;
+      body.appendChild(div);
+    }
 
-      function send() {
-    event.preventDefault();
-      	// console.log("send - wait 2 seconds");
-        const message = document.getElementById("message").value;
-        socket.send(message);
+    main();
+
+    let wsOpen = false;
+    function sendTransaction() {
+      // send transaction to the server
+      const options = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: document.getElementById("address").value, amount: 100 }),
+      };
+
+      fetch("http://localhost:3000/send", options)
+        .then(response => response.json()) // Parse the response as JSON
+        .then(data => {
+          console.log('Success:', data);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+
+      // open websocket connection for notifications
+      if (wsOpen) {
+        return;
       }
+
+      const socket = new WebSocket("ws://localhost:3000/notifications");
+
+      socket.addEventListener("open", function (event) {
+        const address = document.getElementById("address").value;
+        log("sending address: " + address);
+        socket.send(address);
+        wsOpen = true;
+      });
+
+      socket.addEventListener("message", function (event) {
+        const msg = event.data;
+        log("received: " + msg);
+      });
+
+      socket.addEventListener("close", function (event) {
+        log("closed");
+        wsOpen = false;
+      });
+    }
   </script>
 </html>
