@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,8 @@ type WSConn struct {
 }
 
 // var connections = make(map[string]*websocket.Conn)
-var connections = make(map[string]*WSConn)
+// var connections = make(map[string]*WSConn)
+var connections = sync.Map{}
 
 type Message struct {
 	Address string
@@ -70,7 +72,8 @@ func main() {
 			fmt.Println("Read:", err)
 		}
 
-		connections[string(message)] = &WSConn{conn, time.Now()}
+		// connections[string(message)] = &WSConn{conn, time.Now()}
+		connections.Store(string(message), &WSConn{conn, time.Now()})
 	})
 
 	// var previousNumGoroutine int
@@ -86,27 +89,27 @@ func main() {
 	// }()
 
 	// consume messages and send to client
-	go func() {
-		for {
-			<-time.After(1 * time.Second)
-			if len(messages) > 0 {
-				msg := messages[0]
-				messages = messages[1:]
-				send(msg.Address, msg.Msg)
-			}
-		}
-	}()
+	go consume()
 
 	// remove inactive connections
 	go func() {
 		for {
-			for address, conn := range connections {
-				if time.Since(conn.LastActive) > 15*time.Second {
-					fmt.Println("Client disconnected:", conn.RemoteAddr())
-					conn.Close()
-					delete(connections, address)
+			connections.Range(func(address, conn interface{}) bool {
+				if time.Since(conn.(*WSConn).LastActive) > 15*time.Second {
+					fmt.Println("Client disconnected:", conn.(*WSConn).RemoteAddr())
+					conn.(*WSConn).Close()
+					connections.Delete(address)
 				}
-			}
+				return true
+			})
+
+			// for address, conn := range connections {
+			// 	if time.Since(conn.LastActive) > 15*time.Second {
+			// 		fmt.Println("Client disconnected:", conn.RemoteAddr())
+			// 		conn.Close()
+			// 		delete(connections, address)
+			// 	}
+			// }
 		}
 	}()
 
@@ -114,13 +117,26 @@ func main() {
 }
 
 func send(address string, msg []byte) {
-	conn, ok := connections[address]
+	// conn, ok := connections[address]
+	conn, ok := connections.Load(address)
 	if ok {
-		err := conn.WriteMessage(websocket.TextMessage, msg)
+		err := conn.(*WSConn).WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			fmt.Println("Write:", err)
-			delete(connections, address)
+			// delete(connections, address)
+			connections.Delete(address)
 		}
-		conn.LastActive = time.Now()
+		conn.(*WSConn).LastActive = time.Now()
+	}
+}
+
+func consume() {
+	for {
+		<-time.After(1 * time.Second)
+		if len(messages) > 0 {
+			msg := messages[0]
+			messages = messages[1:]
+			send(msg.Address, msg.Msg)
+		}
 	}
 }
